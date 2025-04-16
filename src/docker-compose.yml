@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # Frontend service (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./.env
+    environment:
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
+      - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      - ./frontend:/app  # Mount frontend code for hot reloading
+      - /app/node_modules  # Preserve node_modules from container
+      - /app/.next
+    networks:
+      - app-network
+    depends_on:
+      - backend
+
+  # Backend service (Flask API)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./.env
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+      - SERPER_API_KEY=${SERPER_API_KEY}
+      - FLASK_ENV=production
+      - FLASK_APP=app.py
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:5000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+# Network configuration
+networks:
+  app-network:
+    name: geointelligence-network
+    driver: bridge

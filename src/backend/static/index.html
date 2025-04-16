@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Locas API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: #d8000c;
+            background-color: #ffbaba;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .success {
+            color: #4F8A10;
+            background-color: #DFF2BF;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .warning {
+            color: #9F6000;
+            background-color: #FEEFB3;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .loading {
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .examples {
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .example {
+            cursor: pointer;
+            color: #0066cc;
+            margin-bottom: 5px;
+            padding: 8px;
+            background-color: #f0f8ff;
+            border-radius: 4px;
+        }
+        .example:hover {
+            background-color: #e6f2ff;
+        }
+        .info-box {
+            background-color: #e7f3fe;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Locas API</h1>
+    
+    <div class="container">
+        <div class="info-box">
+            <p><strong>How it works:</strong> Enter your query including location information. Location can be:</p>
+            <ul>
+                <li>An address: "Any cafes near Central Park, New York?"</li>
+                <li>Coordinates: "Parks nearby 37.7749, -122.4194"</li>
+                <li>Google Maps URL: "Can I buy land here? https://www.google.com/maps?q=34.0522,-118.2437"</li>
+            </ul>
+        </div>
+
+        <div class="form-group">
+            <label for="query">Enter your query (including location):</label>
+            <input type="text" id="query" placeholder="E.g., Are there any hospitals near Times Square, New York?" autofocus>
+        </div>
+        
+        <button onclick="submitQuery()">Submit</button>
+
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Processing your request...</p>
+        </div>
+
+        <div id="status-message"></div>
+        <div id="result" class="result" style="display: none;"></div>
+
+        <div class="examples">
+            <h3>Example Queries:</h3>
+            <div class="example" onclick="fillExample('Are there any parks near Empire State Building?')">Are there any parks near Empire State Building?</div>
+            <div class="example" onclick="fillExample('Can I start a coffee shop here? https://www.google.com/maps?q=40.7128,-74.0060')">Can I start a coffee shop here? https://www.google.com/maps?q=40.7128,-74.0060</div>
+            <div class="example" onclick="fillExample('Hospitals around 37.7749, -122.4194')">Hospitals around 37.7749, -122.4194</div>
+            <div class="example" onclick="fillExample('Can I buy land in Central Park, New York?')">Can I buy land in Central Park, New York?</div>
+            <div class="example" onclick="fillExample('What restaurants are near Golden Gate Bridge?')">What restaurants are near Golden Gate Bridge?</div>
+        </div>
+    </div>
+
+    <script>
+        // Fill example query
+        function fillExample(example) {
+            document.getElementById('query').value = example;
+        }
+
+        // Submit query
+        function submitQuery() {
+            const query = document.getElementById('query').value;
+            
+            if (!query) {
+                showMessage('Please enter a query.', 'error');
+                return;
+            }
+            
+            const payload = {
+                query: query
+            };
+            
+            // Show loading spinner
+            document.querySelector('.loading').style.display = 'block';
+            document.getElementById('status-message').innerHTML = '';
+            document.getElementById('result').style.display = 'none';
+            
+            fetch('/api/process-query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading spinner
+                document.querySelector('.loading').style.display = 'none';
+                
+                // Display result
+                if (data.status === 'success') {
+                    document.getElementById('result').textContent = data.result;
+                    document.getElementById('result').style.display = 'block';
+                    showMessage('Query processed successfully!', 'success');
+                } else if (data.status === 'warning') {
+                    document.getElementById('result').textContent = data.result;
+                    document.getElementById('result').style.display = 'block';
+                    showMessage(data.message, 'warning');
+                } else {
+                    showMessage('Error: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                // Hide loading spinner
+                document.querySelector('.loading').style.display = 'none';
+                showMessage('Error connecting to the server. Please try again.', 'error');
+                console.error('Error:', error);
+            });
+        }
+
+        // Show status message
+        function showMessage(message, type) {
+            const statusElement = document.getElementById('status-message');
+            statusElement.innerHTML = message;
+            statusElement.className = type;
+        }
+
+        // Submit on Enter key
+        document.getElementById('query').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                submitQuery();
+            }
+        });
+    </script>
+</body>
+</html>

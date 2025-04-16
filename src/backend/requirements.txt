@@ -1,0 +1,13 @@
+httpx
+openai
+python-dotenv
+requests
+googlemaps 
+geopy
+flask
+flask-cors
+gunicorn
+sqlalchemy
+flask-sqlalchemy
+psycopg2-binary
+beautifulsoup4
