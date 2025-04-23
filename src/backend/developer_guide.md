@@ -242,7 +242,7 @@ real_estate_check = self._is_real_estate_query(parsed_query)
 if real_estate_check["is_real_estate"]:
     # For real estate queries
     property_type = real_estate_check["property_type"]
-    print(f"Detected {property_type} real estate query, analyzing...")
+    logging.info(f"Detected {property_type} real estate query, analyzing...")
     return await self.real_estate_analyzer.analyze_location(
         latitude, longitude, parsed_query, None, config, property_type
     )
@@ -303,7 +303,7 @@ async def analyze_real_estate(self, latitude: float, longitude: float,
             """
         
         analysis_response = await self.client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4.1-mini",
             messages=[
                 {"role": "system", "content": self.real_estate_analysis_system_prompt},
                 {"role": "user", "content": analysis_prompt}

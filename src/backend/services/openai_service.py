@@ -1,4 +1,5 @@
 import json
+import logging
 from openai import AsyncOpenAI
 from typing import Dict, Any, List, Optional
 
@@ -79,7 +80,7 @@ class OpenAIService:
         try:
             # Use OpenAI to format the message
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1-mini",
                 messages=[
                     {"role": "system", "content": self.formatter_system_prompt},
                     {"role": "user", "content": prompt}
@@ -162,7 +163,7 @@ class OpenAIService:
         
         try:
             analysis_response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1-mini",
                 messages=[
                     {"role": "system", "content": self.land_analysis_system_prompt},
                     {"role": "user", "content": analysis_prompt}
@@ -230,7 +231,7 @@ class OpenAIService:
         
         try:
             analysis_response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1-mini",
                 messages=[
                     {"role": "system", "content": self.business_analysis_system_prompt},
                     {"role": "user", "content": analysis_prompt}
@@ -285,7 +286,7 @@ class OpenAIService:
                                 
                             places_dict[name.lower()] = details
         except Exception as e:
-            print(f"Error extracting places: {str(e)}")
+            logging.info(f"Error extracting places: {str(e)}")
             
         return places_dict
     

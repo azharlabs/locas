@@ -1,6 +1,7 @@
 import os
 import json
 import httpx
+import logging
 from typing import Dict, Any, Optional, List
 from bs4 import BeautifulSoup
 
@@ -40,7 +41,7 @@ class SearchService:
             except httpx.TimeoutException:
                 return {"organic": []}
             except Exception as e:
-                print(f"Search error: {str(e)}")
+                logging.info(f"Search error: {str(e)}")
                 return {"organic": [], "error": str(e)}
     
     async def fetch_url_content(self, url: str) -> str:
@@ -89,7 +90,7 @@ class SearchService:
             List of dictionaries with title, link, and content
         """
         search_results = await self.search_web(query)
-        print("search_results================", search_results)
+        logging.info("search_results================", search_results)
         
         results = []
         if "organic" in search_results:

@@ -1,5 +1,6 @@
 import os
 import asyncio
+import logging
 from dotenv import load_dotenv
 
 from assistant import LocationAssistant
@@ -12,12 +13,12 @@ async def main():
     
     # Get API keys from environment
     config = AppConfig.from_env()
-    print("config============", config)
+    logging.info("config============", config)
     
     # Check for required API keys
     if not config.openai_api_key:
-        print("Error: OPENAI_API_KEY environment variable is not set.")
-        print("Please create a .env file based on .env.example and add your API keys.")
+        logging.info("Error: OPENAI_API_KEY environment variable is not set.")
+        logging.info("Please create a .env file based on .env.example and add your API keys.")
         return
     
     # Create the location assistant
@@ -35,10 +36,10 @@ async def main():
         "Is there a park nearby?"
     ]
     
-    print("\n======== Locas ========")
-    print("Example queries:")
+    logging.info("\n======== Locas ========")
+    logging.info("Example queries:")
     for i, query in enumerate(example_queries, 1):
-        print(f"{i}. {query}")
+        logging.info(f"{i}. {query}")
     
     # Get user input
     user_query = input("\nEnter your query (or choose a number from the examples): ")
@@ -46,13 +47,13 @@ async def main():
     # Check if user selected an example query
     if user_query.isdigit() and 1 <= int(user_query) <= len(example_queries):
         user_query = example_queries[int(user_query) - 1]
-        print(f"Selected query: {user_query}")
+        logging.info(f"Selected query: {user_query}")
     
-    print("\nYou can now enter your query with a location in various formats:")
-    print("- Include a Google Maps URL")
-    print("- Include an address like '123 Main St, San Francisco, CA'")
-    print("- Include coordinates like '37.7749, -122.4194'")
-    print("- Or you can specify coordinates separately")
+    logging.info("\nYou can now enter your query with a location in various formats:")
+    logging.info("- Include a Google Maps URL")
+    logging.info("- Include an address like '123 Main St, San Francisco, CA'")
+    logging.info("- Include coordinates like '37.7749, -122.4194'")
+    logging.info("- Or you can specify coordinates separately")
     
     # Get the complete query with location (if provided)
     query_with_location = input("\nEnter your query with location or address (or press Enter to use the previous query): ").strip()
@@ -72,19 +73,19 @@ async def main():
             latitude = float(latitude_input) if latitude_input else None
             longitude = float(longitude_input) if longitude_input else None
             
-            print(f"\nProcessing query: {full_query}")
+            logging.info(f"\nProcessing query: {full_query}")
             if latitude is not None and longitude is not None:
-                print(f"Using coordinates: Latitude {latitude}, Longitude {longitude}")
+                logging.info(f"Using coordinates: Latitude {latitude}, Longitude {longitude}")
             else:
-                print("Will try to extract location from query")
+                logging.info("Will try to extract location from query")
             
-            print("Processing, please wait...\n")
+            logging.info("Processing, please wait...\n")
             
             # Process the query with explicit coordinates
             result = await assistant.process_query(full_query, latitude, longitude)
         except ValueError:
-            print("Invalid coordinates format. Will try to extract location from query")
-            print("Processing, please wait...\n")
+            logging.info("Invalid coordinates format. Will try to extract location from query")
+            logging.info("Processing, please wait...\n")
             
             # Process the query without explicit coordinates
             result = await assistant.process_query(full_query)
@@ -92,16 +93,16 @@ async def main():
     try:
         # Process the query with location information extracted from the query itself
         if 'result' not in locals():
-            print(f"\nProcessing query: {full_query}")
-            print("Will try to extract location from query")
-            print("Processing, please wait...\n")
+            logging.info(f"\nProcessing query: {full_query}")
+            logging.info("Will try to extract location from query")
+            logging.info("Processing, please wait...\n")
             result = await assistant.process_query(full_query)
         
-        # Print the result
-        print("\nResult:")
-        print(result)
+        # logging.info the result
+        logging.info("\nResult:")
+        logging.info(result)
     except Exception as e:
-        print(f"Error running assistant: {str(e)}")
+        logging.info(f"Error running assistant: {str(e)}")
 
 if __name__ == "__main__":
     asyncio.run(main())

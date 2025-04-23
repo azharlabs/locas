@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, Optional, Tuple
 import googlemaps
 from geopy.geocoders import Nominatim
@@ -110,7 +111,7 @@ class LocationParser:
             """
             
             response = await self.openai_client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1-mini",
                 messages=[
                     {"role": "system", "content": "You are a location information extraction assistant. Extract location data from user queries and format as specified."},
                     {"role": "user", "content": prompt}
@@ -127,7 +128,7 @@ class LocationParser:
             return extraction_result
             
         except Exception as e:
-            print(f"Error using LLM for extraction: {str(e)}")
+            logging.info(f"Error using LLM for extraction: {str(e)}")
             return None
     
     async def _extract_coordinates_from_maps_url_llm(self, url: str) -> Optional[Dict[str, float]]:
@@ -155,7 +156,7 @@ class LocationParser:
             """
             
             response = await self.openai_client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1-mini",
                 messages=[
                     {"role": "system", "content": "You are a URL parsing assistant that extracts coordinates from Google Maps URLs."},
                     {"role": "user", "content": prompt}
@@ -181,7 +182,7 @@ class LocationParser:
             return None
             
         except Exception as e:
-            print(f"Error extracting coordinates from URL with LLM: {str(e)}")
+            logging.info(f"Error extracting coordinates from URL with LLM: {str(e)}")
             return None
     
     def extract_coordinates_from_search(self, search_text: str) -> Optional[Dict[str, float]]:
@@ -217,7 +218,7 @@ class LocationParser:
             
             return None
         except Exception as e:
-            print(f"Error extracting coordinates from search: {e}")
+            logging.info(f"Error extracting coordinates from search: {e}")
             return None
     
     def extract_potential_addresses(self, text: str) -> list:

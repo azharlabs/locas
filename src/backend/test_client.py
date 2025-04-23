@@ -1,5 +1,6 @@
 import requests
 import json
+import logging
 
 def test_location_api():
     """Simple test client for the location assistant API."""
@@ -46,18 +47,18 @@ def test_location_api():
     
     # Run each test case
     for test in test_cases:
-        print(f"\n=== Testing: {test['name']} ===")
-        print(f"Request: {json.dumps(test['payload'], indent=2)}")
+        logging.info(f"\n=== Testing: {test['name']} ===")
+        logging.info(f"Request: {json.dumps(test['payload'], indent=2)}")
         
         try:
             # Make the API request
             response = requests.post(base_url, json=test['payload'])
             
-            # Print the response
-            print(f"Status Code: {response.status_code}")
-            print(f"Response: {json.dumps(response.json(), indent=2)}")
+            # logging.info the response
+            logging.info(f"Status Code: {response.status_code}")
+            logging.info(f"Response: {json.dumps(response.json(), indent=2)}")
         except Exception as e:
-            print(f"Error: {str(e)}")
+            logging.info(f"Error: {str(e)}")
 
 if __name__ == "__main__":
     test_location_api()
