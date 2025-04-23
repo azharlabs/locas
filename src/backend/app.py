@@ -1,6 +1,9 @@
 import os
 import asyncio
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
+import queue
+import threading
+import json
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -176,7 +179,8 @@ async def process_query():
         # Process the query - the location should be embedded in the query
         try:
             # We'll pass the raw query to the assistant which will extract location information
-            model_response = await assistant.process_query(query)
+            model_response, tool_name = await assistant.process_query(query)
+            
             
             # Extract latitude and longitude from the assistant's response
             # In a real implementation, you might want to get these from the location_parser
@@ -185,39 +189,103 @@ async def process_query():
             longitude = assistant.longitude if hasattr(assistant, 'longitude') else None
             
             # Check if we used no valid address (indicating no location was found)
-            if "no valid address" in model_response.lower():
+            if model_response == "no valid address":
                 return jsonify({
                     'status': 'warning',
                     'message': 'No location information found in query',
-                    'result': "The address was not found. Kindly include the address in your query to proceed."
+                    'result': "The address was not found. Kindly include the address in your query to proceed.",
+                    'tool': tool_name
                 })
             
             # Store the response in the database
             store_final_response(user_id, query, model_response, latitude, longitude)
             
+            
+
             # Return the successful result
             return jsonify({
                 'status': 'success',
-                'result': model_response
+                'result': model_response,
+                'tool': tool_name
             })
             
         except Exception as e:
+            
+            
             return jsonify({
                 'status': 'error',
-                'message': f'Error processing query: {str(e)}'
+                'message': f'Error processing query: {str(e)}',
+                'tool': ""
+                
             }), 500
             
     except Exception as e:
         return jsonify({
             'status': 'error',
-            'message': f'Server error: {str(e)}'
-        }), 500
+            'message': f'Server error: {str(e)}',
+             'tool': ""
+            }), 500
+
+@app.route('/api/process-query-stream', methods=['POST'])
+def process_query_stream():
+    """Stream processing of location-based queries via Server-Sent Events."""
+    data = request.get_json()
+    query = data.get('query')
+    user_id = data.get('userId')
+    logging.info(f"[SSE] /api/process-query-stream called with query={query!r}, user_id={user_id!r}")
+    q = queue.Queue()
+
+    def tool_callback(tool_name):
+        logging.info(f"[SSE] tool_callback invoked with tool_name={tool_name!r}")
+        q.put({'type': 'tool', 'tool': tool_name})
+
+    def run_assistant():
+        logging.info(f"[SSE] run_assistant starting for query={query!r}")
+        try:
+            result = asyncio.run(assistant.process_query(query, tool_callback=tool_callback))
+            # Normalize result types from assistant
+            if isinstance(result, dict):
+                status = result.get('status', 'success')
+                final_tool = result.get('tool')
+                final_result = result.get('result')
+            elif isinstance(result, (list, tuple)) and len(result) >= 2:
+                final_result, final_tool = result[0], result[1]
+                status = result[2] if len(result) >= 3 else 'success'
+            else:
+                final_result = str(result)
+                final_tool = None
+                status = 'success'
+            logging.info(f"[SSE] enqueue final event: status={status!r}, tool={final_tool!r}, result={str(final_result)[:100]!r}")
+            q.put({'type': 'final', 'status': status, 'result': final_result, 'tool': final_tool})
+        except Exception as e:
+            logging.error(f"[SSE] run_assistant exception: {e}", exc_info=True)
+            q.put({'type': 'final', 'status': 'error', 'message': str(e)})
+
+    threading.Thread(target=run_assistant, daemon=True).start()
+
+    def event_stream():
+        while True:
+            event = q.get()
+            logging.info(f"[SSE] sending event: {event}")
+            yield f"data: {json.dumps(event)}\n\n"
+            if event.get('type') == 'final':
+                break
+
+    # Return SSE response with no-cache to prevent buffering
+    return Response(
+        stream_with_context(event_stream()),
+        content_type='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+        }
+    )
 
 if __name__ == '__main__':
     # Check for required API keys
     if not config.openai_api_key:
-        print("Error: OPENAI_API_KEY environment variable is not set.")
-        print("Please create a .env file based on .env.example and add your API keys.")
+        logging.info("Error: OPENAI_API_KEY environment variable is not set.")
+        logging.info("Please create a .env file based on .env.example and add your API keys.")
     else:
         # Run the app
         port = int(os.environ.get('PORT', 5000))
