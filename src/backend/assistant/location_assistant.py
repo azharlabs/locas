@@ -58,10 +58,18 @@ class LocationAssistant:
         You are a helpful location assistant that helps users find places near them and provides environmental information.
 
         When users ask about places, use the appropriate search function based on their request:
-        - For finding places by category, use find_places
-        - For comprehensive location analysis, use analyze_location_suitability
-        - For business viability analysis, use analyze_business_viability
-        - For information that requires real-time data, use search_web
+        - find_places: 
+            For finding places by category
+        - analyze_location_suitability:
+            For comprehensive location analysis
+        - analyze_business_viability:
+            For business viability analysis
+        - search_web:
+            Queries that need up-to-date web information, such as:
+                - Recent news or developments
+                - Regulations, zoning laws, or ordinances
+                - Market trends or square feet rates
+                - Upcoming projects or events Queries that would benefit from current web information (news, regulations, updates, etc.)
 
         When users ask about air quality or pollen, use the get_environmental_data function.
 
@@ -115,50 +123,9 @@ class LocationAssistant:
                 max_result_retries=2
             )
 
-            # Use LLM to determine the query type and best action
-            query_type_result = await self._classify_query_with_llm(parsed_query)
-            query_type = query_type_result.get("query_type", "general")
-            logging.info(f"Query classification result: {query_type_result}")
-
-            if query_type == "land_purchase":
-                # For land purchase queries, use the comprehensive analysis
-                logging.info("Detected land_purchase query, using LandAnalyzer...")
-                current_tool = "land_analyzer"
-                if tool_callback:
-                    logging.info(f"Invoking tool: {current_tool}")
-                    tool_callback(current_tool)
-                response = await self.land_analyzer.analyze_location(
-                    latitude, longitude, parsed_query, None, config
-                )
-                return {"result": response, "tool": current_tool, "status": "success"}
-
-            elif query_type == "business":
-                # For business viability queries
-                business_type = query_type_result.get("business_type", "business")
-                logging.info(f"Detected business query for type {business_type}, using LocalBusinessAnalyzer...")
-                current_tool = "business_analyzer"
-                if tool_callback:
-                    logging.info(f"Invoking tool: {current_tool}")
-                    tool_callback(current_tool)
-                response = await self.business_analyzer.analyze_location(
-                    latitude, longitude, parsed_query, None, config, business_type
-                )
-                return {"result": response, "tool": current_tool, "status": "success"}
-
-            elif query_type == "web_search":
-                current_tool = "web_search"
-                # For web search queries, use the web search service
-                logging.info("Detected web_search query, using SearchService...")
-                if tool_callback:
-                    logging.info(f"Invoking tool: {current_tool}")
-                    tool_callback(current_tool)
-                response = await self._handle_web_search_query(parsed_query)
-                return {"result": response, "tool": current_tool, "status": "success"}
-
-            else:
-                # For general queries, use the standard conversation flow
-                response, current_tool = await self._handle_general_query(parsed_query, latitude, longitude, config, tool_callback)
-                return {"result": response, "tool": current_tool, "status": "success"}
+            # For general queries, use the standard conversation flow
+            response, current_tool = await self._handle_general_query(parsed_query, latitude, longitude, config, tool_callback)
+            return {"result": response, "tool": current_tool, "status": "success"}
 
 
     async def _parse_query(self, user_query: str) -> Tuple[str, Optional[Dict[str, float]]]:
@@ -183,67 +150,6 @@ class LocationAssistant:
         # (Not implemented in this version)
 
         return user_query, None
-
-    async def _classify_query_with_llm(self, query: str) -> Dict[str, Any]:
-        """
-        Use LLM to classify the query type and extract relevant details.
-
-        Args:
-            query: The user query
-
-        Returns:
-            Dict with query classification details including 'query_type'
-            (one of: 'land_purchase', 'business', 'web_search', 'general')
-            and optional 'business_type' if applicable
-        """
-        try:
-            # Define the system prompt for query classification
-            system_prompt = """
-            You are a query classifier for a location-based assistant. Your task is to classify user queries into the following categories:
-
-            1. land_purchase - Queries about buying, purchasing, or investing in land
-            2. business - Queries about starting, opening, or operating a business
-            3. web_search - Queries that would benefit from current web information (news, regulations, updates, etc.)
-            4. general - Any other general location-based queries
-
-            For business queries, also identify the specific type of business mentioned.
-
-            Respond with a JSON object containing:
-            - query_type: "land_purchase", "business", "web_search", or "general"
-            - business_type: The specific type of business (only for business queries)
-
-            Common business types include: "tea stall", "coffee shop", "restaurant", "retail store", "grocery store", "bakery", etc.
-            If no specific business is mentioned, use "business" as the generic type.
-            """
-
-            # Send the query to the LLM for classification
-            response = await self.openai_client.chat.completions.create(
-                model="gpt-4.1-mini",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Classify this query: \"{query}\""}
-                ],
-                temperature=0.2,  # Low temperature for consistent classification
-                response_format={"type": "json_object"}
-            )
-
-            # Parse the response
-            classification_result = json.loads(response.choices[0].message.content)
-
-            # Ensure the response has the correct format
-            if "query_type" not in classification_result:
-                classification_result["query_type"] = "general"
-
-            # For business queries, ensure business_type is set
-            if classification_result["query_type"] == "business" and "business_type" not in classification_result:
-                classification_result["business_type"] = "business"
-
-            return classification_result
-
-        except Exception as e:
-            # If any error occurs during classification, default to general query
-            print(f"Error classifying query with LLM: {str(e)}")
-            return {"query_type": "general"}
 
     async def _handle_web_search_query(self, query: str) -> str:
         """
@@ -408,7 +314,7 @@ class LocationAssistant:
             result = await self.land_analyzer.analyze_location(
                 latitude=tool_args.get("latitude"),
                 longitude=tool_args.get("longitude"),
-                user_query="Can I buy land here?",
+                user_query=tool_args.get("query", ""),
                 radius=tool_args.get("radius"),
                 config=config
             )
@@ -422,7 +328,7 @@ class LocationAssistant:
             result = await self.business_analyzer.analyze_location(
                 latitude=tool_args.get("latitude"),
                 longitude=tool_args.get("longitude"),
-                user_query=f"Can I start a {business_type} here?",
+                user_query=tool_args.get("query", ""),
                 radius=tool_args.get("radius"),
                 config=config,
                 business_type=business_type
@@ -439,10 +345,7 @@ class LocationAssistant:
             return result, tool_name
         elif tool_name == "search_web":
             query = tool_args.get("query", "")
-            search_results = await self.search_service.search_and_extract(query, max_results=2)
-            return  {
-                "results": search_results,
-                "query": query
-            }, tool_name
+            result = await self._handle_web_search_query(query)
+            return result, tool_name
         else:
             return LocationError(f"Unknown tool: {tool_name}"), tool_name

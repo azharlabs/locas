@@ -51,21 +51,22 @@ class LocationParser:
         if extraction_result:
             location_type = extraction_result.get('type')
             location_value = extraction_result.get('value')
+            clean_query = extraction_result.get('user_query')
             
             if location_type == 'coordinates' and 'lat' in location_value and 'lng' in location_value:
                 # Direct coordinates were found
                 coordinates = location_value
-                clean_query = extraction_result.get('clean_query', user_query)
+                clean_query = extraction_result.get('user_query', user_query)
             
             elif location_type == 'map_url' and location_value:
                 # Google Maps URL was found
                 coordinates = await self._extract_coordinates_from_maps_url_llm(location_value)
-                clean_query = extraction_result.get('clean_query', user_query)
+                clean_query = extraction_result.get('user_query', user_query)
             
             elif location_type == 'address' and location_value:
                 # Address was found, use geocoding
                 coordinates = self.extract_coordinates_from_search(location_value)
-                clean_query = extraction_result.get('clean_query', user_query)
+                clean_query = extraction_result.get('user_query', user_query)
         
         # If LLM extraction failed, fall back to the address extraction
         if not coordinates:
@@ -106,6 +107,7 @@ class LocationParser:
             - type: "coordinates", "map_url", "address", or "none"
             - value: The extracted value (coordinates as {{lat: float, lng: float}}, URL as string, or address as string)
             - clean_query: The original query with the location information removed
+            - user_query: improved user query
             
             Only return the JSON object, no additional text.
             """

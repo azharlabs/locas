@@ -1,5 +1,5 @@
 from typing import Dict, Any, Union, List
-
+import logging
 from models import LocationResults, EnvResult, LocationError, MultiLocationResults
 
 class ResultFormatter:
@@ -27,6 +27,8 @@ class ResultFormatter:
         elif isinstance(result, dict) and "results" in result:
             # Handle web search results
             return ResultFormatter.format_web_search_results(result)
+        elif isinstance(result, str):
+            return result
         else:
             return f"Unexpected result type: {type(result)}"
     
